@@ -3,6 +3,7 @@
 BudgetMitra is a modern personal expense tracker built using Python and Streamlit.  
 It helps users manage daily expenses, track budgets, and visualize financial insights with a clean dashboard.
 
+Version 1 of BudgetMitra - initial Release 1.0.0
 ---
 
 ## 🚀 Features
