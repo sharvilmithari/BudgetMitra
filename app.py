@@ -132,7 +132,6 @@ def inject_css():
 
     /* ── GLOBAL ── */
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
-    #MainMenu, footer, header { visibility: hidden; }
 
     /* ── APP BACKGROUND — deep obsidian with subtle noise texture ── */
     .stApp {
