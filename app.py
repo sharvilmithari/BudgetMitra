@@ -8,6 +8,10 @@ import datetime
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
+st.set_page_config(
+    layout="wide",
+    initial_sidebar_state="expanded")
+
 # 🔐 LOGIN FUNCTIONS
 if not os.path.exists("data"):
     os.makedirs("data", exist_ok=True)
