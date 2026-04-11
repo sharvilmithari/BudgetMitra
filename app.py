@@ -10,7 +10,7 @@ import matplotlib.patches as mpatches
 
 # 🔐 LOGIN FUNCTIONS
 if not os.path.exists("data"):
-    os.makedirs("data")
+    os.makedirs("data", exist_ok=True)
 
 def get_user_file(username):
     return f"data/{username}.json"
