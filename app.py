@@ -136,7 +136,7 @@ def save_transaction(username: str, t_type: str, amount: float,
                      category: str, date, notes: str):
     """Insert a single new transaction into Supabase."""
     supabase.table("transactions").insert({
-        "user_id": st.session_state["user_id"]
+        "user_id": st.session_state["user_id"],
         "type": t_type,
         "amount": float(amount),
         "category": category,
