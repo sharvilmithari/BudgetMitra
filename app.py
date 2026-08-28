@@ -9,6 +9,22 @@ import datetime
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from supabase import create_client, Client
+from database import (
+    get_local_transactions,
+    add_local_transaction,
+    delete_local_transaction,
+    get_local_settings,
+    save_local_settings,
+    get_gemini_key,
+    save_gemini_key,
+    get_goals,
+    get_groups,
+    hard_reset_user_data,
+    get_available_months,
+    get_monthly_summary,
+    get_local_transactions_for_month,
+)
+
 
 # ─────────────────────────────────────────────
 #  SUPABASE CLIENT
@@ -1105,13 +1121,13 @@ def page_settings(settings: dict) -> dict:
         col_yes, col_no = st.columns(2)
         with col_yes:
             if st.button("Yes, Permanently Wipe All My Data", key="confirm_reset_yes"):
-                from database import hard_reset_user_data
                 hard_reset_user_data(user_uuid)
                 st.session_state["confirm_reset_step"] = False
                 st.cache_data.clear()
                 st.cache_resource.clear()
                 st.success("Account data has been completely reset!")
                 st.rerun()
+
         with col_no:
             if st.button("Cancel Reset", key="confirm_reset_cancel"):
                 st.session_state["confirm_reset_step"] = False
