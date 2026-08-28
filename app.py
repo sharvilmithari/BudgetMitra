@@ -44,7 +44,7 @@ def get_supabase():
     try:
         return create_client(SUPABASE_URL, SUPABASE_KEY)
     except Exception as e:
-        st.sidebar.warning(f"⚠️ Supabase init offline: {e}")
+        st.sidebar.warning(f"Supabase init offline: {e}")
         return None
 
 supabase = get_supabase()
@@ -54,7 +54,7 @@ favicon_path = Path(__file__).parent / "favicon.png"
 
 st.set_page_config(
     page_title="SpendWise India",
-    page_icon=str(favicon_path) if favicon_path.exists() else "💰",
+    page_icon=str(favicon_path) if favicon_path.exists() else "SW",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -82,29 +82,42 @@ st.components.v1.html(
 # ─────────────────────────────────────────────
 
 EXPENSE_CATEGORIES = [
-    "🍱 Food",
-    "🚌 Travel",
-    "📱 Recharge",
-    "🏠 Rent",
-    "🛍️ Shopping",
-    "📚 Education",
-    "💊 Healthcare",
-    "🎮 Entertainment",
-    "🔧 Other",
+    "Food & Dining",
+    "Groceries",
+    "Travel & Transport",
+    "Bills & Utilities",
+    "Rent & Housing",
+    "Shopping & Apparel",
+    "Recharge & Subscriptions",
+    "Entertainment & Leisure",
+    "Healthcare & Medical",
+    "Education & Courses",
+    "Personal Care & Grooming",
+    "Investments & Savings",
+    "Debt & Loan EMI",
+    "Gifts & Donations",
+    "Insurance",
+    "Other Expense",
 ]
 
 INCOME_CATEGORIES = [
-    "💰 Stipend",
-    "🏦 Allowance",
-    "💼 Part-time Job",
-    "🎁 Gift",
-    "📈 Other Income",
+    "Salary",
+    "Stipend",
+    "Allowance",
+    "Freelance / Side Gig",
+    "Part-time Job",
+    "Investments & Returns",
+    "Gift & Cash",
+    "Other Income",
 ]
 
 CHART_COLORS = [
     "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4",
-    "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE"
+    "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F",
+    "#BB8FCE", "#F87171", "#6EE7B7", "#818CF8",
+    "#FBBF24", "#34D399", "#C084FC", "#38BDF8"
 ]
+
 
 # ─────────────────────────────────────────────
 #  AUTH — Supabase Auth + profiles table
@@ -249,6 +262,16 @@ def load_user_data() -> pd.DataFrame:
         df = df.dropna(subset=["date"])
         df["amount"] = df["amount"].astype(float)
         return df
+
+
+def load_current_month_data() -> pd.DataFrame:
+    """Load only the current month's transactions — used by dashboard for auto-reset."""
+    df = load_user_data()
+    if df.empty:
+        return df
+    now = pd.Timestamp.now()
+    mask = (df["date"].dt.year == now.year) & (df["date"].dt.month == now.month)
+    return df[mask].copy()
 
 
 def save_transaction(
@@ -413,10 +436,15 @@ def fmt(amount: float) -> str:
 #  UI COMPONENTS
 # ─────────────────────────────────────────────
 
-CARD_ICONS = {"card-income": "💵", "card-expense": "💸", "card-balance": "⚖️", "card-budget": "🎯"}
+CARD_ICONS = {
+    "card-income": '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+    "card-expense": '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+    "card-balance": '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>',
+    "card-budget": '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
+}
 
 def render_metric_card(label, value, card_class, value_class, sub=""):
-    icon = CARD_ICONS.get(card_class, "📊")
+    icon = CARD_ICONS.get(card_class, '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>')
     sub_html = f'<div class="metric-sub">{sub}</div>' if sub else ""
     st.markdown(f"""
     <div class="metric-card {card_class}">
@@ -451,7 +479,7 @@ def page_dashboard(df: pd.DataFrame, settings: dict):
     username = st.session_state.get("user")
 
     st.markdown('<div class="page-title">Dashboard</div>', unsafe_allow_html=True)
-    st.markdown('<div class="page-subtitle">Welcome to your upgraded AI Financial Copilot platform</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-subtitle">Welcome to your AI Financial Copilot platform</div>', unsafe_allow_html=True)
 
     summary = get_summary(df)
     month_expense = get_this_month_expense(df)
@@ -471,7 +499,7 @@ def page_dashboard(df: pd.DataFrame, settings: dict):
         render_metric_card("Total Expenses", fmt(summary["expense"]), "card-expense", "expense", "All time")
     with c3:
         render_metric_card("Net Savings Balance", fmt(summary["balance"]), "card-balance", "balance",
-                           "✅ Surplus" if summary["balance"] >= 0 else "⚠️ Deficit")
+                           "Surplus" if summary["balance"] >= 0 else "Deficit")
     with c4:
         budget = settings["monthly_budget"]
         remaining = budget - month_expense if budget > 0 else 0
@@ -488,19 +516,19 @@ def page_dashboard(df: pd.DataFrame, settings: dict):
     if budget > 0:
         pct = (month_expense / budget) * 100
         if month_expense > budget:
-            render_banner(f"🚨 Budget exceeded! You've spent {fmt(month_expense)} of your {fmt(budget)} budget this month ({pct:.0f}%).", "danger")
+            render_banner(f"Budget exceeded! You've spent {fmt(month_expense)} of your {fmt(budget)} budget this month ({pct:.0f}%).", "danger")
         elif pct >= 80:
-            render_banner(f"⚠️ Heads up! You've used {pct:.0f}% of your monthly budget. Only {fmt(budget - month_expense)} remaining.", "warn")
+            render_banner(f"Heads up! You've used {pct:.0f}% of your monthly budget. Only {fmt(budget - month_expense)} remaining.", "warn")
 
     daily_limit = settings.get("daily_limit", 0)
     if daily_limit > 0 and today_expense > daily_limit:
-        render_banner(f"🔴 Daily limit breached! Today's spending: {fmt(today_expense)} (limit: {fmt(daily_limit)}).", "danger")
+        render_banner(f"Daily limit breached! Today's spending: {fmt(today_expense)} (limit: {fmt(daily_limit)}).", "danger")
 
     # 3. Row 2: Financial Health & AI Insights (Glassmorphism layout)
     col_health, col_insights = st.columns([1, 2])
     
     with col_health:
-        render_section_header("🏥 Health Score")
+        render_section_header('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Health Score')
         st.markdown(f"""
         <div class="metric-card card-balance health-score-card">
             <div class="health-score-number">
@@ -514,13 +542,14 @@ def page_dashboard(df: pd.DataFrame, settings: dict):
         """, unsafe_allow_html=True)
         
     with col_insights:
-        render_section_header("🤖 Copilot Insights")
+        render_section_header('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>Copilot Insights')
         insight_html = ""
         for ins in insights:
             cls = ""
-            if "📈" in ins or "⚠️" in ins or "⚡" in ins or "🚨" in ins:
+            ins_lower = ins.lower()
+            if any(kw in ins_lower for kw in ["increased", "warning", "exceed", "budget", "entertainment", "shopping"]):
                 cls = "warn"
-            elif "📉" in ins or "💰" in ins or "✅" in ins:
+            elif any(kw in ins_lower for kw in ["dropped", "saved", "good work", "excellent", "close to achieving"]):
                 cls = "good"
                 
             insight_html += f"""
@@ -534,7 +563,7 @@ def page_dashboard(df: pd.DataFrame, settings: dict):
     col_goals, col_splits = st.columns([1, 1])
     
     with col_goals:
-        render_section_header("🎯 Goal Progress")
+        render_section_header('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Goal Progress')
         if not goals:
             st.info("No active goals. Set goals in the Smart Goals page to see progress here.")
         else:
@@ -546,7 +575,7 @@ def page_dashboard(df: pd.DataFrame, settings: dict):
                 st.progress(pct / 100.0)
                 
     with col_splits:
-        render_section_header("👥 Split Bills Standings")
+        render_section_header('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Split Bills Standings')
         groups = get_groups(user_uuid, username)
         if not groups:
             st.info("No split bill groups. Create one in the Split Bills page to track debts.")
@@ -561,10 +590,10 @@ def page_dashboard(df: pd.DataFrame, settings: dict):
                     sign = "+" if user_bal > 0 else ""
                     st.markdown(f"**{group['name']}**: <span style='font-family:monospace; {color_bal} font-weight:700;'>{sign}₹{user_bal:,.2f}</span>", unsafe_allow_html=True)
             if not summary_found and groups:
-                st.success("🎉 You are completely settled up in all your groups!")
+                st.success("You are completely settled up in all your groups!")
 
     # 5. Row 4: Recent Transactions
-    render_section_header("🕐 Recent Transactions")
+    render_section_header('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Recent Transactions')
     if df.empty:
         st.info("No transactions yet. Add your first transaction from the Expense Tracker tab!")
     else:
@@ -609,11 +638,11 @@ def page_add_transaction(df: pd.DataFrame, settings: dict):
 
     _c1, _c2 = st.columns(2)
     with _c1:
-        if st.button("💸   Expense\n Money going out", key="_exp_btn", use_container_width=True):
+        if st.button("Expense — Money going out", key="_exp_btn", use_container_width=True):
             st.session_state["txn_type_radio"] = "Expense"
             st.rerun()
     with _c2:
-        if st.button("💰   Income\n Money coming in", key="_inc_btn", use_container_width=True):
+        if st.button("Income — Money coming in", key="_inc_btn", use_container_width=True):
             st.session_state["txn_type_radio"] = "Income"
             st.rerun()
 
@@ -638,7 +667,7 @@ def page_add_transaction(df: pd.DataFrame, settings: dict):
             date = st.date_input("Date", value=datetime.date.today())
             notes = st.text_area("Notes (optional)", placeholder="e.g. Lunch at canteen...", height=120)
 
-        submitted = st.form_submit_button("💾 Save Transaction", use_container_width=True)
+        submitted = st.form_submit_button("Save Transaction", use_container_width=True)
 
         if submitted:
             if amount <= 0:
@@ -648,11 +677,11 @@ def page_add_transaction(df: pd.DataFrame, settings: dict):
                 if t_type == "Expense" and daily_limit > 0:
                     today_total = get_today_expense(df) + amount
                     if today_total > daily_limit:
-                        st.warning(f"⚠️ Adding this will exceed your daily limit! (Today total: {fmt(today_total)}, Limit: {fmt(daily_limit)})")
+                        st.warning(f"Adding this will exceed your daily limit! (Today total: {fmt(today_total)}, Limit: {fmt(daily_limit)})")
 
                 user = st.session_state["user"]
                 save_transaction(t_type, amount, category, date, notes)
-                st.success(f"✅ {t_type} of {fmt(amount)} added successfully!")
+                st.success(f"{t_type} of {fmt(amount)} added successfully!")
                 st.balloons()
                 st.rerun()
 
@@ -660,71 +689,234 @@ def page_add_transaction(df: pd.DataFrame, settings: dict):
         month_expense = get_this_month_expense(df)
         remaining = settings["monthly_budget"] - month_expense
         st.markdown("<br>", unsafe_allow_html=True)
-        render_section_header("💡 Budget Reminder")
+        render_section_header('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Budget Reminder')
         pct = (month_expense / settings["monthly_budget"]) * 100
         st.progress(min(pct / 100, 1.0))
         st.caption(f"Spent {fmt(month_expense)} of {fmt(settings['monthly_budget'])} ({pct:.1f}%) — {fmt(max(remaining, 0))} remaining this month")
 
 
 # ─────────────────────────────────────────────
-#  PAGE: TRANSACTION HISTORY
+#  PAGE: TRANSACTION HISTORY (Bank Statement)
 # ─────────────────────────────────────────────
 
 def page_history(df: pd.DataFrame):
+    from database import get_available_months, get_monthly_summary, get_local_transactions_for_month
+    import calendar
+
     st.markdown('<div class="page-title">Transaction History</div>', unsafe_allow_html=True)
-    st.markdown('<div class="page-subtitle">Browse, filter, and export all your records</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-subtitle">Browse your monthly statements like a bank passbook</div>', unsafe_allow_html=True)
+
+    user_uuid = st.session_state.get("user_uuid")
+    all_data = df  # Full data for delete operations
 
     if df.empty:
         st.info("No transactions recorded yet. Start by adding one!")
         return
 
-    render_section_header("🔍 Filters")
-    f1, f2, f3 = st.columns(3)
+    # ── Month selector ──
+    available_months = get_available_months(user_uuid) if user_uuid else []
+    if not available_months and not df.empty:
+        # Fallback: extract available (year, month) from df
+        df_temp = df.copy()
+        df_temp["ym"] = df_temp["date"].dt.to_period("M")
+        unique_periods = sorted(df_temp["ym"].unique(), reverse=True)
+        available_months = [(p.year, p.month) for p in unique_periods]
+
+    if not available_months:
+        st.info("No transaction history found.")
+        return
+
+    # Build labels for dropdown
+    now = datetime.datetime.now()
+    month_labels = []
+    for y, m in available_months:
+        label = f"{calendar.month_name[m]} {y}"
+        if y == now.year and m == now.month:
+            label += " (Current)"
+        month_labels.append(label)
+
+    render_section_header('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Select Month')
+
+    selected_label = st.selectbox("Statement Period", month_labels, label_visibility="collapsed")
+    selected_idx = month_labels.index(selected_label)
+    sel_year, sel_month = available_months[selected_idx]
+
+    # ── Monthly summary ──
+    summary = get_monthly_summary(user_uuid, sel_year, sel_month) if user_uuid else None
+    if not summary or (summary["total_income"] == 0 and summary["total_expense"] == 0 and summary["opening_balance"] == 0):
+        # Calculate summary directly from df if summary is empty
+        start_dt = pd.Timestamp(year=sel_year, month=sel_month, day=1)
+        prev_df = df[df["date"] < start_dt]
+        opening = prev_df[prev_df["type"] == "Income"]["amount"].sum() - prev_df[prev_df["type"] == "Expense"]["amount"].sum()
+        
+        curr_mask = (df["date"].dt.year == sel_year) & (df["date"].dt.month == sel_month)
+        curr_df = df[curr_mask]
+        tot_inc = curr_df[curr_df["type"] == "Income"]["amount"].sum()
+        tot_exp = curr_df[curr_df["type"] == "Expense"]["amount"].sum()
+        net = tot_inc - tot_exp
+        summary = {
+            "opening_balance": opening,
+            "total_income": tot_inc,
+            "total_expense": tot_exp,
+            "net_change": net,
+            "closing_balance": opening + net,
+        }
+
+    month_name_full = f"{calendar.month_name[sel_month]} {sel_year}"
+    _, last_day = calendar.monthrange(sel_year, sel_month)
+    period_str = f"01 {calendar.month_abbr[sel_month]} {sel_year} — {last_day} {calendar.month_abbr[sel_month]} {sel_year}"
+
+    # Comparison with previous month
+    prev_month = sel_month - 1 if sel_month > 1 else 12
+    prev_year = sel_year if sel_month > 1 else sel_year - 1
+    prev_summary = get_monthly_summary(user_uuid, prev_year, prev_month) if user_uuid else None
+    if not prev_summary:
+        prev_mask = (df["date"].dt.year == prev_year) & (df["date"].dt.month == prev_month)
+        prev_exp = df[prev_mask & (df["type"] == "Expense")]["amount"].sum()
+        prev_summary = {"total_expense": prev_exp}
+
+    net_class = "net-positive" if summary["net_change"] >= 0 else "net-negative"
+    closing_cls = "closing" if summary["closing_balance"] >= 0 else "debit"
+
+    # Spending comparison
+    if prev_summary.get("total_expense", 0) > 0:
+        pct_change = ((summary["total_expense"] - prev_summary["total_expense"]) / prev_summary["total_expense"]) * 100
+        if pct_change > 1:
+            comp_html = f'<div class="statement-comparison up"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>Spending up {abs(pct_change):.0f}% vs {calendar.month_abbr[prev_month]} {prev_year}</div>'
+        elif pct_change < -1:
+            comp_html = f'<div class="statement-comparison down"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>Spending down {abs(pct_change):.0f}% vs {calendar.month_abbr[prev_month]} {prev_year}</div>'
+        else:
+            comp_html = f'<div class="statement-comparison neutral">≈ Similar spending as {calendar.month_abbr[prev_month]} {prev_year}</div>'
+    else:
+        comp_html = ""
+
+    # Statement header card
+    st.markdown(f"""
+    <div class="statement-header">
+        <div class="statement-header-title">Account Statement — {month_name_full}</div>
+        <div class="statement-header-period">{period_str}</div>
+        <div class="statement-summary-grid">
+            <div class="statement-summary-item">
+                <div class="statement-summary-label">Opening Balance</div>
+                <div class="statement-summary-value opening">{fmt(summary['opening_balance'])}</div>
+            </div>
+            <div class="statement-summary-item">
+                <div class="statement-summary-label">Total Credits</div>
+                <div class="statement-summary-value credit">{fmt(summary['total_income'])}</div>
+            </div>
+            <div class="statement-summary-item">
+                <div class="statement-summary-label">Total Debits</div>
+                <div class="statement-summary-value debit">{fmt(summary['total_expense'])}</div>
+            </div>
+            <div class="statement-summary-item">
+                <div class="statement-summary-label">Net Change</div>
+                <div class="statement-summary-value {net_class}">{'+ ' if summary['net_change'] >= 0 else ''}{fmt(summary['net_change'])}</div>
+            </div>
+            <div class="statement-summary-item">
+                <div class="statement-summary-label">Closing Balance</div>
+                <div class="statement-summary-value {closing_cls}">{fmt(summary['closing_balance'])}</div>
+            </div>
+        </div>
+        {comp_html}
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── Filters within selected month ──
+    render_section_header('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>Filters')
+    f1, f2 = st.columns(2)
     with f1:
-        type_filter = st.selectbox("Type", ["All", "Income", "Expense"])
+        type_filter = st.selectbox("Type", ["All", "Income", "Expense"], key="stmt_type_filter")
     with f2:
-        all_cats = ["All"] + sorted(df["category"].unique().tolist())
-        cat_filter = st.selectbox("Category", all_cats)
-    with f3:
-        months = ["All"] + sorted(df["date"].dt.strftime("%b %Y").unique().tolist(), reverse=True)
-        month_filter = st.selectbox("Month", months)
+        # Get categories for this month's data
+        month_txns = get_local_transactions_for_month(user_uuid, sel_year, sel_month) if user_uuid else []
+        if not month_txns:
+            curr_mask = (df["date"].dt.year == sel_year) & (df["date"].dt.month == sel_month)
+            month_df = df[curr_mask].sort_values(["date", "id"], ascending=[True, True])
+            month_txns = month_df.to_dict("records")
 
-    filtered = df.copy()
+        cats_in_month = sorted(set(t["category"] for t in month_txns)) if month_txns else []
+        all_cats = ["All"] + cats_in_month
+        cat_filter = st.selectbox("Category", all_cats, key="stmt_cat_filter")
+
+    # Apply filters
+    filtered_txns = month_txns
     if type_filter != "All":
-        filtered = filtered[filtered["type"] == type_filter]
+        filtered_txns = [t for t in filtered_txns if t["type"] == type_filter]
     if cat_filter != "All":
-        filtered = filtered[filtered["category"] == cat_filter]
-    if month_filter != "All":
-        filtered = filtered[filtered["date"].dt.strftime("%b %Y") == month_filter]
+        filtered_txns = [t for t in filtered_txns if t["category"] == cat_filter]
 
-    col_exp, col_del = st.columns([3, 1])
-    with col_exp:
-        csv = filtered.copy()
-        csv["date"] = csv["date"].dt.strftime("%Y-%m-%d")
-        st.download_button(
-            label="⬇️ Export CSV",
-            data=csv.to_csv(index=False).encode("utf-8"),
-            file_name="expense_export.csv",
-            mime="text/csv",
-        )
-    with col_del:
-        st.caption(f"{len(filtered)} record(s) found")
 
-    display = filtered.sort_values("date", ascending=False).copy()
-    display["date"] = display["date"].dt.strftime("%d %b %Y")
-    display["amount"] = display["amount"].apply(fmt)
-    display = display[["id", "date", "type", "category", "amount", "notes"]].rename(
-        columns={"id": "ID", "date": "Date", "type": "Type", "category": "Category", "amount": "Amount", "notes": "Notes"}
-    )
-    st.dataframe(display, use_container_width=True, hide_index=True)
+    # ── Action bar ──
+    col_dl, col_count = st.columns([3, 1])
+    with col_dl:
+        if filtered_txns:
+            csv_df = pd.DataFrame(filtered_txns)
+            csv_df = csv_df[["id", "date", "type", "category", "amount", "notes"]]
+            st.download_button(
+                label=f"📄 Download {month_name_full} Statement",
+                data=csv_df.to_csv(index=False).encode("utf-8"),
+                file_name=f"SpendWise_Statement_{sel_year}_{sel_month:02d}.csv",
+                mime="text/csv",
+            )
+    with col_count:
+        st.markdown(f'<div class="statement-record-count">{len(filtered_txns)} transaction(s)</div>', unsafe_allow_html=True)
 
-    render_section_header("🗑️ Delete Transaction")
+    # ── Build statement table with running balance ──
+    if not filtered_txns:
+        st.markdown("""
+        <div class="statement-table-wrapper">
+            <div class="statement-empty">
+                <div class="statement-empty-icon">📋</div>
+                No transactions found for this period and filter.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        # Calculate running balance starting from opening balance
+        running = summary["opening_balance"]
+        rendered_rows = []
+        for txn in filtered_txns:
+            if txn["type"] == "Income":
+                running += txn["amount"]
+                amt_class = "stmt-credit"
+                amt_display = fmt(txn["amount"])
+            else:
+                running -= txn["amount"]
+                amt_class = "stmt-debit"
+                amt_display = fmt(txn["amount"])
+
+            # Format date
+            try:
+                if isinstance(txn["date"], (pd.Timestamp, datetime.date, datetime.datetime)):
+                    date_str = txn["date"].strftime("%d %b %Y")
+                else:
+                    dt = datetime.datetime.strptime(str(txn["date"])[:10], "%Y-%m-%d")
+                    date_str = dt.strftime("%d %b %Y")
+            except Exception:
+                date_str = str(txn["date"])[:10]
+
+            bal_class = "stmt-balance" if running >= 0 else "stmt-balance negative"
+            notes_text = txn["notes"] if txn["notes"] else "—"
+
+            row_item = f"<tr><td><span class=\"stmt-date\">{date_str}</span></td><td><span class=\"stmt-category\">{txn['category']}</span></td><td>{notes_text}</td><td><span class=\"{amt_class}\">{amt_display}</span></td><td><span class=\"{bal_class}\">{fmt(running)}</span></td></tr>"
+            rendered_rows.append(row_item)
+
+        # Reverse list so newest dates are at the top while keeping running balances accurate
+        rendered_rows.reverse()
+        rows_html = "".join(rendered_rows)
+
+        table_html = f'<div class="statement-table-wrapper"><div class="statement-table-scroll"><table class="statement-table"><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Balance</th></tr></thead><tbody>{rows_html}</tbody></table></div></div>'
+        st.markdown(table_html, unsafe_allow_html=True)
+
+
+
+    # ── Delete Transaction section ──
+    render_section_header('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>Delete Transaction')
     del_id = st.number_input("Enter Transaction ID to delete", min_value=1, step=1)
     if st.button("Delete"):
-        user = st.session_state["user"]
-        match = df[df["id"] == int(del_id)]
+        match = all_data[all_data["id"] == int(del_id)]
         if not match.empty:
-            delete_transaction_db(int(del_id)) 
+            delete_transaction_db(int(del_id))
             st.success(f"Transaction #{int(del_id)} deleted.")
             st.rerun()
         else:
@@ -745,7 +937,7 @@ def page_analytics(df: pd.DataFrame):
 
     expenses = df[df["type"] == "Expense"].copy()
 
-    tab1, tab2, tab3 = st.tabs(["🥧 Category Breakdown", "📊 Monthly Trend", "📋 Summary Table"])
+    tab1, tab2, tab3 = st.tabs(["Category Breakdown", "Monthly Trend", "Summary Table"])
 
     with tab1:
         cat_totals = expenses.groupby("category")["amount"].sum().sort_values(ascending=False)
@@ -799,7 +991,7 @@ def page_analytics(df: pd.DataFrame):
         plt.close()
 
     with tab3:
-        render_section_header("💰 Category-wise Summary")
+        render_section_header('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Category-wise Summary')
         summary = expenses.groupby("category")["amount"].agg(["sum", "count", "mean"])
         summary.columns = ["Total Spent", "Transactions", "Avg per Transaction"]
         summary["Total Spent"] = summary["Total Spent"].apply(fmt)
@@ -807,14 +999,14 @@ def page_analytics(df: pd.DataFrame):
         summary = summary.sort_values("Transactions", ascending=False)
         st.dataframe(summary, use_container_width=True)
 
-    st.markdown("### 💡 Insights")
+    st.markdown("### Insights")
     raw_summary = df.groupby("category")["amount"].sum()
     if not raw_summary.empty:
         top_category = raw_summary.idxmax()
         max_amount = raw_summary.max()
         total_expense = raw_summary.sum()
         percentage = (max_amount / total_expense) * 100
-        st.success(f"🧠 You spent most on **{top_category}** (₹{max_amount:.2f}, {percentage:.1f}% of total expenses)")
+        st.success(f"You spent most on **{top_category}** (₹{max_amount:.2f}, {percentage:.1f}% of total expenses)")
 
 
 # ─────────────────────────────────────────────
@@ -841,15 +1033,15 @@ def page_settings(settings: dict) -> dict:
     user_uuid = st.session_state.get("user_uuid")
     current_username = st.session_state.get("user", "")
 
-    render_section_header("👤 Profile Settings")
+    render_section_header('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Profile Settings')
     new_username = st.text_input("Display Name", value=current_username, placeholder="Enter your display name", help="Change your display name shown in the app")
 
-    render_section_header("💼 Monthly Budget")
+    render_section_header('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Monthly Budget')
     budget = st.number_input("Set your monthly budget (₹)", min_value=0.0,
                              value=float(settings.get("monthly_budget", 0)), step=500.0, format="%.2f",
                              help="Set ₹0 to disable budget tracking")
 
-    render_section_header("🔔 Daily Expense Limit")
+    render_section_header('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Daily Expense Limit')
     daily = st.number_input("Set daily expense limit (₹)", min_value=0.0,
                             value=float(settings.get("daily_limit", 0)), step=50.0, format="%.2f",
                             help="You'll be warned when you exceed this each day. Set ₹0 to disable.")
@@ -859,14 +1051,14 @@ def page_settings(settings: dict) -> dict:
     gemini_key = ""
     
     if not global_api_key_set:
-        render_section_header("🤖 AI Copilot Configuration")
+        render_section_header('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>AI Copilot Configuration')
         from database import get_gemini_key
         existing_key = get_gemini_key(user_uuid)
         gemini_key = st.text_input("Gemini API Key", value=existing_key, type="password", 
                                    placeholder="starts with AIza...",
                                    help="Get an API key from Google AI Studio")
 
-    if st.button("💾 Save Settings"):
+    if st.button("Save Settings"):
         if new_username and new_username.strip() and new_username != current_username:
             update_user_name(user_uuid, new_username.strip())
         new_settings = {"monthly_budget": budget, "daily_limit": daily}
@@ -875,11 +1067,59 @@ def page_settings(settings: dict) -> dict:
         if not global_api_key_set and gemini_key:
             from database import save_gemini_key
             save_gemini_key(user_uuid, gemini_key)
-        st.success("✅ Settings saved successfully!")
+        st.success("Settings saved successfully!")
         st.rerun()
         return new_settings
 
+    # ── Danger Zone (Hard Reset) ──
+    render_section_header('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Danger Zone')
+
+    st.markdown("""
+    <style>
+    div[data-testid="stButton"] > button[kind="secondary"]:has(div:contains("Hard Reset")),
+    div[data-testid="stButton"] > button:has(div:contains("Hard Reset")),
+    div[data-testid="stButton"] > button:has(div:contains("Permanently Wipe")) {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        border: 1px solid #f87171 !important;
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4) !important;
+    }
+    div[data-testid="stButton"] > button:has(div:contains("Hard Reset")):hover,
+    div[data-testid="stButton"] > button:has(div:contains("Permanently Wipe")):hover {
+        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+        box-shadow: 0 6px 20px rgba(239, 68, 68, 0.6) !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    if "confirm_reset_step" not in st.session_state:
+        st.session_state["confirm_reset_step"] = False
+
+    if not st.session_state["confirm_reset_step"]:
+        if st.button("Hard Reset Account Data", key="reset_danger_btn"):
+            st.session_state["confirm_reset_step"] = True
+            st.rerun()
+    else:
+        st.error("CRITICAL WARNING: Hard reset will permanently delete ALL your transactions, monthly limits, and smart goals! This action cannot be undone.")
+        col_yes, col_no = st.columns(2)
+        with col_yes:
+            if st.button("Yes, Permanently Wipe All My Data", key="confirm_reset_yes"):
+                from database import hard_reset_user_data
+                hard_reset_user_data(user_uuid)
+                st.session_state["confirm_reset_step"] = False
+                st.cache_data.clear()
+                st.cache_resource.clear()
+                st.success("Account data has been completely reset!")
+                st.rerun()
+        with col_no:
+            if st.button("Cancel Reset", key="confirm_reset_cancel"):
+                st.session_state["confirm_reset_step"] = False
+                st.rerun()
+
+
     return settings
+
 
 
 
@@ -916,14 +1156,14 @@ def render_sidebar() -> str:
 
         page = st.radio(
             "Navigate",
-            ["🏠  Dashboard", "🤖  AI Copilot", "👥  Split Bills", "🎯  Smart Goals", "💰  Expense Tracker", "📈  Analytics", "📋  History", "⚙️  Settings"],
+            ["Dashboard", "AI Copilot", "Split Bills", "Smart Goals", "Expense Tracker", "Analytics", "History", "Settings"],
             label_visibility="collapsed",
         )
 
         st.markdown("<div style='flex:1'></div>", unsafe_allow_html=True)
         st.markdown('<hr class="sidebar-divider">', unsafe_allow_html=True)
 
-        if st.button("🚪  Sign Out", use_container_width=True, key="logout_btn"):
+        if st.button("Sign Out", use_container_width=True, key="logout_btn"):
             try:
                 supabase.auth.sign_out()
             except Exception:
@@ -939,17 +1179,7 @@ def render_sidebar() -> str:
         </div>
         """, unsafe_allow_html=True)
 
-    page_map = {
-        "🏠  Dashboard": "🏠 Dashboard",
-        "🤖  AI Copilot": "🤖 AI Copilot",
-        "👥  Split Bills": "👥 Split Bills",
-        "🎯  Smart Goals": "🎯 Smart Goals",
-        "💰  Expense Tracker": "💰 Expense Tracker",
-        "📋  History": "📋 History",
-        "📈  Analytics": "📈 Analytics",
-        "⚙️  Settings": "⚙️ Settings",
-    }
-    return page_map.get(page, page)
+    return page
 
 
 # ─────────────────────────────────────────────
@@ -1025,7 +1255,7 @@ def show_login():
         if logo_b64:
             logo_html = f'<img src="data:image/png;base64,{logo_b64}" style="max-width:110px;max-height:110px;object-fit:contain;display:block;margin:0 auto 12px;mix-blend-mode:screen;">'
         else:
-            logo_html = '<div style="font-size:2.4rem;text-align:center;margin-bottom:12px;">💰</div>'
+            logo_html = '<div style="font-size:1.8rem;text-align:center;margin-bottom:12px;font-family:Syne,sans-serif;font-weight:900;color:#818cf8;">SW</div>'
 
         st.markdown(logo_html, unsafe_allow_html=True)
 
@@ -1047,7 +1277,7 @@ def show_login():
                     if ok:
                         st.rerun()
                     else:
-                        st.error(f"❌ {err}")
+                        st.error(err)
 
             # Forgot password link
             st.markdown("""
@@ -1088,11 +1318,11 @@ def show_login():
                 else:
                     ok, err = signup(email, username, password)
                     if ok:
-                        st.success("✅ Account created! Please log in.")
+                        st.success("Account created! Please log in.")
                         st.session_state["login_tab"] = "login"
                         st.rerun()
                     else:
-                        st.error(f"⚠️ {err}")
+                        st.error(err)
 
             st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
             c_left, c_mid, c_right = st.columns([1, 4, 1])
@@ -1116,11 +1346,11 @@ def show_login():
                 else:
                     ok, err = request_password_reset(email)
                     if ok:
-                        st.success("✅ Reset link sent! Check your inbox.")
+                        st.success("Reset link sent! Check your inbox.")
                         st.session_state["login_tab"] = "login"
                         st.rerun()
                     else:
-                        st.error(f"⚠️ {err}")
+                        st.error(err)
 
             st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
             c_left, c_mid, c_right = st.columns([1, 4, 1])
@@ -1131,7 +1361,7 @@ def show_login():
 
         if supabase is None:
             st.markdown("<hr style='margin:18px 0; border-color:rgba(255,255,255,0.08);'>", unsafe_allow_html=True)
-            st.warning("🔌 Supabase connection is offline or paused. Please check your database settings.")
+            st.warning("Supabase connection is offline or paused. Please check your database settings.")
 
         st.markdown(
             '<p style="font-size:0.65rem;color:#1e293b;text-align:center;margin-top:24px;margin-bottom:0;letter-spacing:0.5px;">'
@@ -1177,9 +1407,11 @@ def main():
     settings = load_settings(user)
     page = render_sidebar()
 
-    if page == "🏠 Dashboard":
-        page_dashboard(df, settings)
-    elif page == "🤖 AI Copilot":
+    if page == "Dashboard":
+        # Dashboard uses current-month-only data for the auto-reset effect
+        df_current = load_current_month_data()
+        page_dashboard(df_current, settings)
+    elif page == "AI Copilot":
         from ai_copilot import ask_ai_copilot, calculate_health_score, generate_automated_insights, get_predictions
         from database import get_goals, get_gemini_key
         
@@ -1189,7 +1421,7 @@ def main():
         health_info = calculate_health_score(df, settings)
         predictions = get_predictions(df, settings)
         
-        st.markdown('<div class="page-title">🤖 AI Copilot</div>', unsafe_allow_html=True)
+        st.markdown('<div class="page-title">AI Copilot</div>', unsafe_allow_html=True)
         st.markdown('<div class="page-subtitle">Your personal intelligent financial advisor</div>', unsafe_allow_html=True)
         
         col_main, col_side = st.columns([2, 1])
@@ -1203,11 +1435,11 @@ def main():
             </div>
             """, unsafe_allow_html=True)
             
-            st.markdown("##### 💡 AI Suggestions")
+            st.markdown("##### AI Suggestions")
             for sug in health_info["suggestions"][:3]:
                 st.markdown(f"- {sug}")
                 
-            st.markdown("##### 📈 Expected Forecast")
+            st.markdown("##### Expected Forecast")
             st.markdown(f"- **Expected Income**: ₹{predictions['expected_income']:,.2f}")
             st.markdown(f"- **Expected Expenses**: ₹{predictions['expected_expense']:,.2f}")
             st.markdown(f"- **Expected Net Savings**: ₹{predictions['expected_savings']:,.2f}")
@@ -1215,29 +1447,29 @@ def main():
                 st.warning(predictions['warning'])
                 
         with col_main:
-            st.markdown("##### ⚡ Ask AI Copilot")
+            st.markdown("##### Ask AI Copilot")
             c_q1, c_q2 = st.columns(2)
             c_q3, c_q4 = st.columns(2)
             
             q_asked = ""
             with c_q1:
-                if st.button("📱 Can I afford an iPhone?", use_container_width=True):
+                if st.button("Can I afford an iPhone?", use_container_width=True):
                     q_asked = "Can I afford an iPhone?"
             with c_q2:
-                if st.button("⚖️ How is my financial health?", use_container_width=True):
+                if st.button("How is my financial health?", use_container_width=True):
                     q_asked = "How is my financial health?"
             with c_q3:
-                if st.button("💸 Where am I wasting money?", use_container_width=True):
+                if st.button("Where am I wasting money?", use_container_width=True):
                     q_asked = "Where am I wasting money?"
             with c_q4:
-                if st.button("📊 How can I save ₹5000 this month?", use_container_width=True):
+                if st.button("How can I save ₹5000 this month?", use_container_width=True):
                     q_asked = "How can I save ₹5000 this month?"
                     
             if "chat_history" not in st.session_state:
                 st.session_state["chat_history"] = []
                 
             user_input = st.text_input("Ask a question about your finances...", value=q_asked if q_asked else "", placeholder="e.g. Will I run out of money?")
-            send_btn = st.button("💬 Send to Copilot")
+            send_btn = st.button("Send to Copilot")
             
             if (send_btn or q_asked) and user_input:
                 with st.spinner("Analyzing your transactions and thinking..."):
@@ -1245,35 +1477,35 @@ def main():
                     st.session_state["chat_history"].append({"user": user_input, "ai": answer})
                     
             if st.session_state["chat_history"]:
-                st.markdown("<br>##### 💬 Conversation History", unsafe_allow_html=True)
+                st.markdown("<br>##### Conversation History", unsafe_allow_html=True)
                 for chat in st.session_state["chat_history"]:
                     st.markdown(f"""
                     <div class="chat-bubble-user">
-                        <strong>👤 You:</strong> {chat['user']}
+                        <strong>You:</strong> {chat['user']}
                     </div>
                     <div class="chat-bubble-ai">
-                        <strong>🤖 Copilot:</strong><br>{chat['ai']}
+                        <strong>Copilot:</strong><br>{chat['ai']}
                     </div>
                     """, unsafe_allow_html=True)
                     
-    elif page == "👥 Split Bills":
+    elif page == "Split Bills":
         from split_bills import page_split_bills
         page_split_bills(user_uuid, user)
         
-    elif page == "🎯 Smart Goals":
+    elif page == "Smart Goals":
         from goals import page_smart_goals
         page_smart_goals(df, user_uuid)
         
-    elif page == "💰 Expense Tracker":
+    elif page == "Expense Tracker":
         page_add_transaction(df, settings)
         
-    elif page == "📋 History":
+    elif page == "History":
         page_history(df)
         
-    elif page == "📈 Analytics":
+    elif page == "Analytics":
         page_analytics(df)
         
-    elif page == "⚙️ Settings":
+    elif page == "Settings":
         updated = page_settings(settings)
         if updated is not None:
             settings = updated

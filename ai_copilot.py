@@ -104,23 +104,23 @@ def calculate_health_score(df: pd.DataFrame, settings: dict) -> dict:
     suggestions = []
     if score >= 85:
         status = "Excellent Financial Health"
-        suggestions.append("🌟 Maintain your excellent savings rate. Consider allocating funds to long-term investments.")
-        suggestions.append("💼 Maintain your emergency fund representing 6 months of expenses.")
+        suggestions.append("Maintain your excellent savings rate. Consider allocating funds to long-term investments.")
+        suggestions.append("Maintain your emergency fund representing 6 months of expenses.")
     elif score >= 70:
         status = "Good Financial Health"
-        suggestions.append("📈 Good job! Try to increase your savings rate to 30% by cutting small daily expenses.")
-        suggestions.append("🛒 Keep shopping and discretionary categories under strict check.")
+        suggestions.append("Good job! Try to increase your savings rate to 30% by cutting small daily expenses.")
+        suggestions.append("Keep shopping and discretionary categories under strict check.")
     elif score >= 50:
         status = "Average Financial Health"
-        suggestions.append("⚠️ Budget warning: Your expenses are consuming a large share of your income.")
-        suggestions.append("🍱 Look to optimize food and dining expenses, which are often the easiest to reduce.")
+        suggestions.append("Budget warning: Your expenses are consuming a large share of your income.")
+        suggestions.append("Look to optimize food and dining expenses, which are often the easiest to reduce.")
         if budget == 0:
-            suggestions.append("🎯 Set a Monthly Budget in Settings to better track your allocations.")
+            suggestions.append("Set a Monthly Budget in Settings to better track your allocations.")
     else:
         status = "Critical Financial Health"
-        suggestions.append("🚨 Action required: You are spending more than you earn, or have very little savings.")
-        suggestions.append("🛑 Stop all non-essential discretionary spending immediately.")
-        suggestions.append("📉 Create a strict monthly budget and build a ₹10,000 emergency fund immediately.")
+        suggestions.append("Action required: You are spending more than you earn, or have very little savings.")
+        suggestions.append("Stop all non-essential discretionary spending immediately.")
+        suggestions.append("Create a strict monthly budget and build a ₹10,000 emergency fund immediately.")
 
     # Specific suggestion based on expense categories
     expenses_df = df[df["type"] == "Expense"]
@@ -129,7 +129,7 @@ def calculate_health_score(df: pd.DataFrame, settings: dict) -> dict:
         top_cat = cat_totals.idxmax()
         top_cat_pct = (cat_totals.max() / cat_totals.sum()) * 100
         if top_cat_pct > 35:
-            suggestions.append(f"🔍 Your highest expense is {top_cat} ({top_cat_pct:.0f}% of expenses). Focus on lowering this category.")
+            suggestions.append(f"Your highest expense is {top_cat} ({top_cat_pct:.0f}% of expenses). Focus on lowering this category.")
 
     return {
         "score": score,
@@ -147,7 +147,7 @@ def generate_automated_insights(df: pd.DataFrame, settings: dict, goals: list = 
     """Generate dynamic insights based on transactions and goal status."""
     insights = []
     if df.empty:
-        return ["💡 Welcome to SpendWise Copilot! Start logging transactions to view live AI insights here."]
+        return ["Welcome to SpendWise Copilot! Start logging transactions to view live AI insights here."]
 
     now = datetime.datetime.now()
     
@@ -160,28 +160,28 @@ def generate_automated_insights(df: pd.DataFrame, settings: dict, goals: list = 
     df_last = df[last_month_mask]
     
     # Compare Food spending
-    food_this = df_this[(df_this["type"] == "Expense") & (df_this["category"].str.contains("Food|🍱", case=False))]["amount"].sum()
-    food_last = df_last[(df_last["type"] == "Expense") & (df_last["category"].str.contains("Food|🍱", case=False))]["amount"].sum()
+    food_this = df_this[(df_this["type"] == "Expense") & (df_this["category"].str.contains("Food", case=False))]["amount"].sum()
+    food_last = df_last[(df_last["type"] == "Expense") & (df_last["category"].str.contains("Food", case=False))]["amount"].sum()
     if food_last > 0:
         increase = ((food_this - food_last) / food_last) * 100
         if increase >= 15:
-            insights.append(f"📈 Food spending increased by {increase:.0f}% compared to last month.")
+            insights.append(f"Food spending increased by {increase:.0f}% compared to last month.")
         elif increase <= -15:
-            insights.append(f"📉 Good work! Food & dining expenses dropped by {abs(increase):.0f}%.")
+            insights.append(f"Good work! Food & dining expenses dropped by {abs(increase):.0f}%.")
 
     # Discretionary / Entertainment check
-    ent_this = df_this[(df_this["type"] == "Expense") & (df_this["category"].str.contains("Entertainment|🎮|Shopping|🛍️", case=False))]["amount"].sum()
+    ent_this = df_this[(df_this["type"] == "Expense") & (df_this["category"].str.contains("Entertainment|Shopping", case=False))]["amount"].sum()
     total_exp_this = df_this[df_this["type"] == "Expense"]["amount"].sum()
     if total_exp_this > 0:
         pct = (ent_this / total_exp_this) * 100
         if pct > 25:
-            insights.append(f"⚠️ Entertainment & Shopping make up {pct:.0f}% of this month's spending. Consider lowering it.")
+            insights.append(f"Entertainment & Shopping make up {pct:.0f}% of this month's spending. Consider lowering it.")
 
     # Shopping expense comparison
-    shop_this = df_this[(df_this["type"] == "Expense") & (df_this["category"].str.contains("Shopping|🛍️", case=False))]["amount"].sum()
-    shop_last = df_last[(df_last["type"] == "Expense") & (df_last["category"].str.contains("Shopping|🛍️", case=False))]["amount"].sum()
+    shop_this = df_this[(df_this["type"] == "Expense") & (df_this["category"].str.contains("Shopping", case=False))]["amount"].sum()
+    shop_last = df_last[(df_last["type"] == "Expense") & (df_last["category"].str.contains("Shopping", case=False))]["amount"].sum()
     if shop_last > 0 and shop_this < shop_last:
-        insights.append("📉 Shopping expenses dropped this month. Excellent self-control!")
+        insights.append("Shopping expenses dropped this month. Excellent self-control!")
 
     # Savings comparison
     inc_this = df_this[df_this["type"] == "Income"]["amount"].sum()
@@ -194,7 +194,7 @@ def generate_automated_insights(df: pd.DataFrame, settings: dict, goals: list = 
     
     if sav_last > 0 and sav_this > sav_last:
         inc_pct = ((sav_this - sav_last) / sav_last) * 100
-        insights.append(f"💰 You saved {inc_pct:.0f}% more than last month! Keep it up.")
+        insights.append(f"You saved {inc_pct:.0f}% more than last month! Keep it up.")
 
     # Goal proximity check
     if goals:
@@ -204,7 +204,7 @@ def generate_automated_insights(df: pd.DataFrame, settings: dict, goals: list = 
             if target > 0:
                 pct = (current / target) * 100
                 if 80 <= pct < 100:
-                    insights.append(f"🎯 You are close to achieving your savings goal '{goal['name']}' ({pct:.0f}% completed)!")
+                    insights.append(f"You are close to achieving your savings goal '{goal['name']}' ({pct:.0f}% completed)!")
 
     # Budget pace warning
     budget = settings.get("monthly_budget", 0)
@@ -214,13 +214,13 @@ def generate_automated_insights(df: pd.DataFrame, settings: dict, goals: list = 
         pace = day_of_month / days_in_month
         exp_pace = total_exp_this / budget
         if exp_pace > pace + 0.10:
-            insights.append("⚡ Your current spending trend may exceed this month's budget.")
+            insights.append("Your current spending trend may exceed this month's budget.")
 
     # Add defaults if list is too small
     if not insights:
-        insights.append("💡 Tip: Try saving at least 20% of your stipend/allowance every month to build a safety net.")
-        insights.append("🎯 Define specific financial goals in settings to trigger dynamic AI projections.")
-        insights.append("👥 Using Split Bills? Keep your settlements updated to maintain accurate debt tracking.")
+        insights.append("Tip: Try saving at least 20% of your stipend/allowance every month to build a safety net.")
+        insights.append("Define specific financial goals in settings to trigger dynamic AI projections.")
+        insights.append("Using Split Bills? Keep your settlements updated to maintain accurate debt tracking.")
         
     return insights[:4]
 
@@ -265,9 +265,9 @@ def get_predictions(df: pd.DataFrame, settings: dict) -> dict:
     warning = ""
     budget = settings.get("monthly_budget", 0.0)
     if budget > 0 and expected_exp > budget:
-        warning = f"⚠️ Warning: Predicted monthly expense (₹{expected_exp:,.2f}) exceeds your budget limit (₹{budget:,.2f})."
+        warning = f"Warning: Predicted monthly expense (₹{expected_exp:,.2f}) exceeds your budget limit (₹{budget:,.2f})."
     elif expected_exp > expected_inc and expected_inc > 0:
-        warning = "🔴 Warning: Your predicted expenses exceed your income. You may run into a deficit this month."
+        warning = "Warning: Your predicted expenses exceed your income. You may run into a deficit this month."
         
     return {
         "expected_income": expected_inc,
@@ -402,7 +402,7 @@ def ask_ai_copilot(df: pd.DataFrame, settings: dict, goals: list, query: str, ap
     # All models failed — show detailed error + offline fallback
     fallback = get_local_fallback_response(query, net_balance, month_expense, budget, goals, categories_breakdown, key_missing=False)
     return (
-        f"⚠️ **AI Copilot could not connect**\n\n"
+        f"**AI Copilot could not connect**\n\n"
         f"**Reason:** {last_error}\n\n"
         f"**Troubleshoot:**\n"
         f"- Make sure your API Key in `key.env` is correct (starts with `AIza`)\n"
@@ -428,19 +428,20 @@ def get_local_fallback_response(query: str, net_balance: float, month_expense: f
     if "iphone" in query_lower or "phone" in query_lower or "afford" in query_lower or "buy" in query_lower:
         price = 70000.0 if "iphone" in query_lower else 40000.0
         if net_balance >= price:
-            return f"⚖️ **Affordability Analysis**:\n\n- Yes, you can technically afford it, as your current net balance is **₹{net_balance:,.2f}** which is above the estimated cost of **₹{price:,.2f}**.\n- **Advisor Tip**: Buying this will reduce your net savings to **₹{net_balance - price:,.2f}**. Ensure you maintain a ₹15,000 emergency buffer before executing this purchase." + disclaimer
+            return f"**Affordability Analysis**:\n\n- Yes, you can technically afford it, as your current net balance is **\u20b9{net_balance:,.2f}** which is above the estimated cost of **\u20b9{price:,.2f}**.\n- **Advisor Tip**: Buying this will reduce your net savings to **\u20b9{net_balance - price:,.2f}**. Ensure you maintain a \u20b915,000 emergency buffer before executing this purchase." + disclaimer
         else:
             deficit = price - net_balance
-            return f"❌ **Affordability Analysis**:\n\n- No, you cannot comfortably afford this item right now. The estimated cost is **₹{price:,.2f}** and your net savings balance is **₹{net_balance:,.2f}** (Deficit of **₹{deficit:,.2f}**).\n- **Advisor Tip**: Set up a Smart Goal in Settings to save ₹5,000 monthly for this item, and we'll track your timeline to success!" + disclaimer
+            return f"**Affordability Analysis**:\n\n- No, you cannot comfortably afford this item right now. The estimated cost is **\u20b9{price:,.2f}** and your net savings balance is **\u20b9{net_balance:,.2f}** (Deficit of **\u20b9{deficit:,.2f}**).\n- **Advisor Tip**: Set up a Smart Goal in Settings to save \u20b95,000 monthly for this item, and we'll track your timeline to success!" + disclaimer
             
     if "save" in query_lower or "how to save" in query_lower or "investment" in query_lower or "invest" in query_lower:
-        return f"💰 **Savings & Investment Advice**:\n\n- **Current Balance**: ₹{net_balance:,.2f}.\n- **Rule of Thumb (50/30/20)**: Aim to save at least 20% of your income. If you earn ₹50,000, that is ₹10,000.\n- **Discretionary Leakage**: Look at your categories: *{categories[:60]}*. Trimming 15% from dining and shopping will instantly increase your savings rate." + disclaimer
+        return f"**Savings & Investment Advice**:\n\n- **Current Balance**: \u20b9{net_balance:,.2f}.\n- **Rule of Thumb (50/30/20)**: Aim to save at least 20% of your income. If you earn \u20b950,000, that is \u20b910,000.\n- **Discretionary Leakage**: Look at your categories: *{categories[:60]}*. Trimming 15% from dining and shopping will instantly increase your savings rate." + disclaimer
         
     if "health" in query_lower or "financial score" in query_lower:
         status_text = "Good" if net_balance > 15000 else "Needs Improvement"
-        return f"🏥 **Financial Health Assessment**:\n\n- **Net balance**: ₹{net_balance:,.2f}.\n- **Overall Status**: **{status_text}**.\n- **Active Budget**: {f'₹{budget:,.2f}/month' if budget > 0 else 'None set (Please set one in Settings)'}.\n- **Recommendations**: Set up a monthly budget, hold an emergency fund in a separate savings account, and limit dining out." + disclaimer
+        budget_str = f"₹{budget:,.2f}/month" if budget > 0 else "None set (Please set one in Settings)"
+        return f"**Financial Health Assessment**:\n\n- **Net balance**: ₹{net_balance:,.2f}.\n- **Overall Status**: **{status_text}**.\n- **Active Budget**: {budget_str}.\n- **Recommendations**: Set up a monthly budget, hold an emergency fund in a separate savings account, and limit dining out." + disclaimer
         
     if "increase" in query_lower or "waste" in query_lower or "where did my money go" in query_lower:
-        return f"🔍 **Spending Audit**:\n\n- **Month expenses**: ₹{month_expense:,.2f}.\n- **Top Categories**: {categories[:100]}...\n- **Advisor Tip**: Review your notes in the **History** tab. Small repeating transfers under ₹200 (recharges, snacks) often add up to over 20% of monthly leakage." + disclaimer
+        return f"**Spending Audit**:\n\n- **Month expenses**: \u20b9{month_expense:,.2f}.\n- **Top Categories**: {categories[:100]}...\n- **Advisor Tip**: Review your notes in the **History** tab. Small repeating transfers under \u20b9200 (recharges, snacks) often add up to over 20% of monthly leakage." + disclaimer
         
-    return f"👋 **Hello! I am your AI Financial Copilot.**\n\n- **Net Balance**: ₹{net_balance:,.2f}\n- **Expenses this Month**: ₹{month_expense:,.2f}\n- **Budget**: ₹{budget:,.2f}\n\nI can analyze your transactions, evaluate purchase affordabilities, calculate budget timelines, and project goal completion dates. Enter your Gemini API Key in Settings to ask more detailed questions!" + disclaimer
+    return f"**Hello! I am your AI Financial Copilot.**\n\n- **Net Balance**: \u20b9{net_balance:,.2f}\n- **Expenses this Month**: \u20b9{month_expense:,.2f}\n- **Budget**: \u20b9{budget:,.2f}\n\nI can analyze your transactions, evaluate purchase affordabilities, calculate budget timelines, and project goal completion dates. Enter your Gemini API Key in Settings to ask more detailed questions!" + disclaimer

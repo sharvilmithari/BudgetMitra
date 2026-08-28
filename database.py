@@ -637,5 +637,243 @@ def save_local_settings(user_uuid: str, monthly_budget: float, daily_limit: floa
     )
     conn.commit()
     conn.close()
+def hard_reset_user_data(user_uuid: str) -> bool:
+    """Wipe all transactions, settings, goals, and split data for Supabase and SQLite."""
+    # 1. Supabase deletion
+    tables_user = ["transactions", "goals", "settings"]
+    for tbl in tables_user:
+        if check_supabase_table_exists(tbl):
+            try:
+                if user_uuid:
+                    supabase_client.table(tbl).delete().eq("user_id", user_uuid).execute()
+                supabase_client.table(tbl).delete().neq("id", 0).execute()
+            except Exception:
+                pass
+
+    tables_split = ["split_bill_shares", "split_bills", "split_settlements", "split_group_members", "split_groups"]
+    for tbl in tables_split:
+        if check_supabase_table_exists(tbl):
+            try:
+                supabase_client.table(tbl).delete().neq("id", 0).execute()
+            except Exception:
+                pass
+
+    # 2. SQLite deletion (wipe all tables completely)
+    conn = get_sqlite_conn()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM transactions")
+    cursor.execute("DELETE FROM goals")
+    cursor.execute("DELETE FROM settings")
+    cursor.execute("DELETE FROM split_bill_shares")
+    cursor.execute("DELETE FROM split_bills")
+    cursor.execute("DELETE FROM split_settlements")
+    cursor.execute("DELETE FROM split_group_members")
+    cursor.execute("DELETE FROM split_groups")
+    conn.commit()
+    conn.close()
     return True
+
+
+
+
+
+# ─────────────────────────────────────────────
+#  MONTHLY STATEMENT HELPERS
+# ─────────────────────────────────────────────
+
+def get_local_transactions_for_month(user_uuid: str, year: int, month: int) -> list:
+    """Fetch user transactions for a specific month (Supabase or local SQLite fallback)."""
+    start_date = f"{year:04d}-{month:02d}-01"
+    if month == 12:
+        end_date = f"{year + 1:04d}-01-01"
+    else:
+        end_date = f"{year:04d}-{month + 1:02d}-01"
+
+    if check_supabase_table_exists("transactions"):
+        try:
+            res = (
+                supabase_client.table("transactions")
+                .select("*")
+                .eq("user_id", user_uuid)
+                .gte("date", start_date)
+                .lt("date", end_date)
+                .order("date", desc=False)
+                .execute()
+            )
+            txns = []
+            for r in res.data:
+                txns.append({
+                    "id": r["id"],
+                    "user_id": r["user_id"],
+                    "type": r["type"],
+                    "amount": float(r["amount"]),
+                    "category": r["category"],
+                    "date": r["date"],
+                    "notes": r["notes"] or ""
+                })
+            return txns
+        except Exception:
+            pass
+
+    conn = get_sqlite_conn()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT * FROM transactions WHERE user_id = ? AND date >= ? AND date < ? ORDER BY date ASC, id ASC",
+        (user_uuid, start_date, end_date)
+    )
+    rows = cursor.fetchall()
+    txns = []
+    for r in rows:
+        txns.append({
+            "id": r["id"],
+            "user_id": r["user_id"],
+            "type": r["type"],
+            "amount": float(r["amount"]),
+            "category": r["category"],
+            "date": r["date"],
+            "notes": r["notes"] or ""
+        })
+    conn.close()
+    return txns
+
+
+def get_available_months(user_uuid: str) -> list:
+    """Return a sorted list of (year, month) tuples for all months that have transactions."""
+    if check_supabase_table_exists("transactions"):
+        try:
+            res = (
+                supabase_client.table("transactions")
+                .select("date")
+                .eq("user_id", user_uuid)
+                .order("date", desc=True)
+                .execute()
+            )
+            ym_set = set()
+            for r in res.data:
+                d_str = str(r.get("date", ""))[:7]
+                if "-" in d_str:
+                    parts = d_str.split("-")
+                    try:
+                        ym_set.add((int(parts[0]), int(parts[1])))
+                    except (ValueError, IndexError):
+                        pass
+            if ym_set:
+                return sorted(list(ym_set), reverse=True)
+        except Exception:
+            pass
+
+    conn = get_sqlite_conn()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT DISTINCT substr(date, 1, 7) as ym FROM transactions WHERE user_id = ? ORDER BY ym DESC",
+        (user_uuid,)
+    )
+    rows = cursor.fetchall()
+    months = []
+    for r in rows:
+        ym = r["ym"]
+        try:
+            parts = ym.split("-")
+            months.append((int(parts[0]), int(parts[1])))
+        except (ValueError, IndexError):
+            pass
+    conn.close()
+    return months
+
+
+def get_monthly_summary(user_uuid: str, year: int, month: int) -> dict:
+    """
+    Calculate a bank-statement-style summary for a given month.
+    Returns opening_balance, total_income, total_expense, closing_balance, net_change.
+    Opening balance = all income before this month minus all expenses before this month.
+    """
+    start_date = f"{year:04d}-{month:02d}-01"
+    if month == 12:
+        end_date = f"{year + 1:04d}-01-01"
+    else:
+        end_date = f"{year:04d}-{month + 1:02d}-01"
+
+    if check_supabase_table_exists("transactions"):
+        try:
+            # All transactions before start_date
+            prev_res = (
+                supabase_client.table("transactions")
+                .select("type, amount")
+                .eq("user_id", user_uuid)
+                .lt("date", start_date)
+                .execute()
+            )
+            opening_balance = 0.0
+            for r in prev_res.data:
+                amt = float(r.get("amount", 0.0))
+                if r.get("type") == "Income":
+                    opening_balance += amt
+                elif r.get("type") == "Expense":
+                    opening_balance -= amt
+
+            # Current month transactions
+            curr_res = (
+                supabase_client.table("transactions")
+                .select("type, amount")
+                .eq("user_id", user_uuid)
+                .gte("date", start_date)
+                .lt("date", end_date)
+                .execute()
+            )
+            total_income = 0.0
+            total_expense = 0.0
+            for r in curr_res.data:
+                amt = float(r.get("amount", 0.0))
+                if r.get("type") == "Income":
+                    total_income += amt
+                elif r.get("type") == "Expense":
+                    total_expense -= amt
+
+            net_change = total_income - total_expense
+            closing_balance = opening_balance + net_change
+            return {
+                "opening_balance": opening_balance,
+                "total_income": total_income,
+                "total_expense": total_expense,
+                "net_change": net_change,
+                "closing_balance": closing_balance,
+            }
+        except Exception:
+            pass
+
+    conn = get_sqlite_conn()
+    cursor = conn.cursor()
+
+    # Opening balance: sum of all transactions before this month
+    cursor.execute(
+        "SELECT COALESCE(SUM(CASE WHEN type='Income' THEN amount ELSE 0 END), 0) as income, "
+        "COALESCE(SUM(CASE WHEN type='Expense' THEN amount ELSE 0 END), 0) as expense "
+        "FROM transactions WHERE user_id = ? AND date < ?",
+        (user_uuid, start_date)
+    )
+    row = cursor.fetchone()
+    opening_balance = float(row["income"]) - float(row["expense"])
+
+    # This month's totals
+    cursor.execute(
+        "SELECT COALESCE(SUM(CASE WHEN type='Income' THEN amount ELSE 0 END), 0) as income, "
+        "COALESCE(SUM(CASE WHEN type='Expense' THEN amount ELSE 0 END), 0) as expense "
+        "FROM transactions WHERE user_id = ? AND date >= ? AND date < ?",
+        (user_uuid, start_date, end_date)
+    )
+    row = cursor.fetchone()
+    total_income = float(row["income"])
+    total_expense = float(row["expense"])
+
+    net_change = total_income - total_expense
+    closing_balance = opening_balance + net_change
+
+    conn.close()
+    return {
+        "opening_balance": opening_balance,
+        "total_income": total_income,
+        "total_expense": total_expense,
+        "net_change": net_change,
+        "closing_balance": closing_balance,
+    }
 

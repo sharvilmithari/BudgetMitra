@@ -119,46 +119,48 @@ def page_split_bills(user_uuid: str, username: str):
     # Load all groups user belongs to
     groups = get_groups(user_uuid, username)
     
-    # Sidebar or Header Group Selector
-    col_sel, col_new = st.columns([3, 1])
-    
-    with col_sel:
-        if groups:
-            group_options = {g["name"]: g["id"] for g in groups}
-            selected_group_name = st.selectbox("Select Group", list(group_options.keys()))
-            active_group_id = group_options[selected_group_name]
-        else:
-            st.info("💡 You are not in any split bill groups yet. Create one below to get started!")
-            active_group_id = None
+    # Group Selector & Creation Expander
+    if groups:
+        group_options = {g["name"]: g["id"] for g in groups}
+        default_index = 0
+        if "active_group_id" in st.session_state and st.session_state["active_group_id"] in group_options.values():
+            ids_list = list(group_options.values())
+            default_index = ids_list.index(st.session_state["active_group_id"])
             
-    with col_new:
-        create_new = st.button("➕ Create Group", use_container_width=True)
-        
-    if create_new or not active_group_id:
-        st.markdown("<hr>", unsafe_allow_html=True)
-        st.subheader("Create a New Split Group")
+        selected_group_name = st.selectbox("Select Group", list(group_options.keys()), index=default_index)
+        active_group_id = group_options[selected_group_name]
+        st.session_state["active_group_id"] = active_group_id
+    else:
+        st.info("You are not in any split bill groups yet. Use the section below to create your first group!")
+        active_group_id = None
+
+    with st.expander("➕ Create a New Split Group", expanded=(not active_group_id)):
         with st.form("create_group_form", clear_on_submit=True):
             g_name = st.text_input("Group Name", placeholder="e.g. Goa Trip 2026, Room 402 Expenses")
             friends_input = st.text_area("Friend Names (Comma-separated)", placeholder="Rahul, Priya, Amit")
-            submit_g = st.form_submit_button("📁 Initialize Group")
+            submit_g = st.form_submit_button("Initialize Group", use_container_width=True)
             
             if submit_g:
                 if not g_name:
                     st.error("Please enter a group name.")
                 else:
                     friends = [f.strip() for f in friends_input.split(",") if f.strip()]
-                    # Create group, inserting creator too
                     group_id = create_group_db(user_uuid, username, g_name, friends)
-                    st.success(f"✅ Group '{g_name}' created successfully!")
+                    st.session_state["active_group_id"] = group_id
+                    st.success(f"Group '{g_name}' created successfully!")
                     st.rerun()
+
+    if not active_group_id:
         return
+
+
 
     # Load active group details
     members = get_group_members(active_group_id)
     balances, simplified_debts = calculate_group_balances(active_group_id)
     
     # BALANCES & INSIGHT CARDS
-    st.markdown(f"### 👥 {selected_group_name} Dashboard")
+    st.markdown(f"### {selected_group_name} Dashboard")
     
     # Show grid of member balances
     st.markdown("##### Member Net Standings")
@@ -181,17 +183,17 @@ def page_split_bills(user_uuid: str, username: str):
             
     # TAB CONTROL
     tab_debts, tab_add_bill, tab_settle, tab_history = st.tabs([
-        "🤝 Who Owes Whom", 
-        "➕ Add Expense", 
-        "💳 Record Settlement", 
-        "📜 Transaction History"
+        "Who Owes Whom", 
+        "Add Expense", 
+        "Record Settlement", 
+        "Transaction History"
     ])
     
     # ── TAB 1: WHO OWES WHOM ──
     with tab_debts:
         st.markdown("##### Simplified Debt Instructions")
         if not simplified_debts:
-            st.success("🎉 All settled up! Nobody owes anything in this group.")
+            st.success("All settled up! Nobody owes anything in this group.")
         else:
             for debt in simplified_debts:
                 st.markdown(f"""
@@ -210,7 +212,7 @@ def page_split_bills(user_uuid: str, username: str):
             paid_by = st.selectbox("Paid By", members)
             bill_date = st.date_input("Date", value=datetime.date.today())
             
-            submit_bill = st.form_submit_button("💸 Save & Split Equally")
+            submit_bill = st.form_submit_button("Save & Split Equally")
             
             if submit_bill:
                 if not desc:
@@ -226,7 +228,7 @@ def page_split_bills(user_uuid: str, username: str):
                     
                     ok = add_split_bill_db(active_group_id, desc, amt, paid_by, paid_uid, str(bill_date), shares)
                     if ok:
-                        st.success(f"✅ Expense of ₹{amt:,.2f} split equally among {len(members)} members!")
+                        st.success(f"Expense of ₹{amt:,.2f} split equally among {len(members)} members!")
                         st.rerun()
                         
     # ── TAB 3: RECORD SETTLEMENT ──
@@ -250,7 +252,7 @@ def page_split_bills(user_uuid: str, username: str):
             
             settle_amt = st.number_input("Settlement Amount (₹)", min_value=0.0, value=suggested_amt, step=10.0)
             settle_date = st.date_input("Settlement Date", value=datetime.date.today())
-            submit_settle = st.form_submit_button("💳 Log Settlement")
+            submit_settle = st.form_submit_button("Log Settlement")
             
             if submit_settle:
                 if from_m == to_m:
@@ -260,7 +262,7 @@ def page_split_bills(user_uuid: str, username: str):
                 else:
                     ok = add_settlement_db(active_group_id, from_m, to_m, settle_amt, str(settle_date))
                     if ok:
-                        st.success(f"✅ Recorded: {from_m} paid {to_m} ₹{settle_amt:,.2f}!")
+                        st.success(f"Recorded: {from_m} paid {to_m} ₹{settle_amt:,.2f}!")
                         st.rerun()
 
     # ── TAB 4: TRANSACTION HISTORY ──
@@ -273,7 +275,7 @@ def page_split_bills(user_uuid: str, username: str):
         for b in bills:
             ledger_data.append({
                 "Date": b["date"],
-                "Type": "💸 Bill Expense",
+                "Type": "Bill Expense",
                 "Description": b["description"],
                 "Amount": f"₹{b['amount']:,.2f}",
                 "Paid By": b["paid_by_name"],
@@ -283,8 +285,8 @@ def page_split_bills(user_uuid: str, username: str):
         for s in settlements:
             ledger_data.append({
                 "Date": s["date"],
-                "Type": "🤝 Settlement Payment",
-                "Description": f"Payment: {s['from_member']} ➔ {s['to_member']}",
+                "Type": "Settlement Payment",
+                "Description": f"Payment: {s['from_member']} → {s['to_member']}",
                 "Amount": f"₹{s['amount']:,.2f}",
                 "Paid By": s["from_member"],
                 "Details": f"Received by {s['to_member']}"

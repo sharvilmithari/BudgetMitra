@@ -998,3 +998,371 @@ hr {
     font-size: 1.2rem;
   }
 }
+
+
+/* ═══════════════════════════════════════
+   BANK STATEMENT STYLES
+   ═══════════════════════════════════════ */
+
+/* Month badge / selector area */
+.statement-month-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.08) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: var(--radius-full);
+  padding: 8px 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #a5b4fc;
+  letter-spacing: 0.3px;
+  margin-bottom: 6px;
+}
+
+.statement-month-badge svg {
+  opacity: 0.8;
+}
+
+/* Statement header — the summary card at the top */
+.statement-header {
+  background: linear-gradient(145deg, #0f1420 0%, #111827 100%);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  padding: 28px 32px;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+  animation: fadeInUp 0.4s ease-out;
+}
+
+.statement-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent-gradient);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+}
+
+.statement-header-title {
+  font-family: var(--font-body);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  letter-spacing: -0.3px;
+}
+
+.statement-header-period {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+  font-weight: 500;
+}
+
+/* Summary grid inside the statement header */
+.statement-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+}
+
+.statement-summary-item {
+  text-align: center;
+  padding: 14px 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-base);
+}
+
+.statement-summary-item:hover {
+  border-color: var(--border-hover);
+}
+
+.statement-summary-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 6px;
+}
+
+.statement-summary-value {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.statement-summary-value.opening { color: var(--text-secondary); }
+.statement-summary-value.credit { color: var(--color-income); }
+.statement-summary-value.debit { color: var(--color-expense); }
+.statement-summary-value.net-positive { color: var(--color-income); }
+.statement-summary-value.net-negative { color: var(--color-expense); }
+.statement-summary-value.closing { color: var(--color-balance); }
+
+/* Month comparison indicator */
+.statement-comparison {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  margin-top: 16px;
+}
+
+.statement-comparison.up {
+  background: rgba(239, 68, 68, 0.1);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.statement-comparison.down {
+  background: rgba(52, 211, 153, 0.1);
+  color: #6ee7b7;
+  border: 1px solid rgba(52, 211, 153, 0.2);
+}
+
+.statement-comparison.neutral {
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--text-secondary);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+/* Transaction rows in statement view */
+.statement-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.statement-table thead th {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-default);
+  text-align: left;
+  position: sticky;
+  top: 0;
+  background: var(--bg-elevated);
+  z-index: 1;
+}
+
+.statement-table thead th:last-child,
+.statement-table thead th:nth-child(4),
+.statement-table thead th:nth-child(5) {
+  text-align: right;
+}
+
+.statement-table tbody tr {
+  transition: background var(--transition-fast);
+}
+
+.statement-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.statement-table tbody td {
+  padding: 13px 14px;
+  font-size: 0.84rem;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+}
+
+.statement-table tbody td:last-child,
+.statement-table tbody td:nth-child(4),
+.statement-table tbody td:nth-child(5) {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* Date column styling */
+.stmt-date {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* Category badge */
+.stmt-category {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+/* Credit / Debit amount styling */
+.stmt-credit {
+  color: var(--color-income) !important;
+}
+
+.stmt-credit::before {
+  content: '+';
+}
+
+.stmt-debit {
+  color: var(--color-expense) !important;
+}
+
+.stmt-debit::before {
+  content: '-';
+}
+
+/* Running balance in the last column */
+.stmt-balance {
+  color: var(--color-balance) !important;
+  font-weight: 700 !important;
+}
+
+.stmt-balance.negative {
+  color: var(--color-expense) !important;
+}
+
+/* Statement wrapper for scrollable table */
+.statement-table-wrapper {
+  background: linear-gradient(145deg, #0f1420 0%, #111827 100%);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 20px;
+  animation: fadeInUp 0.45s ease-out;
+}
+
+.statement-table-scroll {
+  max-height: 520px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.3) transparent;
+}
+
+.statement-table-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.statement-table-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.statement-table-scroll::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.3);
+  border-radius: 3px;
+}
+
+/* Empty state for statement */
+.statement-empty {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.statement-empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+  opacity: 0.4;
+}
+
+/* Statement download / action bar */
+.statement-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.statement-record-count {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Dashboard month indicator */
+.dashboard-month-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  border-radius: var(--radius-full);
+  padding: 6px 16px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #a5b4fc;
+  letter-spacing: 0.2px;
+  margin-bottom: 16px;
+}
+
+.dashboard-month-indicator svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.7;
+}
+
+/* Responsive adjustments for statement */
+@media (max-width: 768px) {
+  .statement-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .statement-summary-grid > :last-child {
+    grid-column: span 2;
+  }
+
+  .statement-header {
+    padding: 20px 18px;
+  }
+
+  .statement-table tbody td,
+  .statement-table thead th {
+    padding: 10px 8px;
+    font-size: 0.78rem;
+  }
+
+  .statement-table-scroll {
+    max-height: 400px;
+  }
+}
+
+
+/* Danger Zone Reset Button Styling */
+[data-testid="stButton-reset_danger_btn"] > button,
+[data-testid="stButton-confirm_reset_yes"] > button {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  border: 1px solid #f87171 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4) !important;
+  transition: all 0.2s ease !important;
+}
+
+[data-testid="stButton-reset_danger_btn"] > button:hover,
+[data-testid="stButton-confirm_reset_yes"] > button:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+  border-color: #ef4444 !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.6) !important;
+  transform: translateY(-1px) !important;
+}
+
+
